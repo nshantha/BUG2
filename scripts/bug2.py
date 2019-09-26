@@ -9,7 +9,10 @@ from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 from sensor_msgs.msg import LaserScan
 
+# Region variable for storing laser data
 regions = [0,0,0,0,0]
+
+# Variables used to store co-ordinates
 x=0
 y=0
 theta=0
@@ -18,14 +21,16 @@ x1 = 0
 y1 = 0
 z = 0
 
+#Flag Variables
 flag = 0
 pose_flag = 0
 
-
+#Position Variables
 initial_position = Point()
 current_position = Point()
 goal_position = Point() 
 
+#Laser Data function
 def laser_scan(laser_msg):
     global regions
 
@@ -37,6 +42,7 @@ def laser_scan(laser_msg):
       min(laser_msg.ranges[288:360]),       #Left
      ]
 
+# Callback function for Position of the Robot
 def poseCallback(pose_message):  
     global x,y,theta,initial_position,current_position,pose_flag
 
@@ -61,8 +67,9 @@ def poseCallback(pose_message):
         current_position.y = y
         current_position.z = theta
 
+# Callback function for position of destination
 def goalCallback(goal_message):
-    print(goal_message)
+    # print(goal_message)
     global x1,y1,z,goal_position
     x1 = goal_message.pose.position.x
     y1 = goal_message.pose.position.y
@@ -73,10 +80,12 @@ def goalCallback(goal_message):
     goal_position.y = y1
     goal_position.z = z
 
+# Function for flag shift
 def flag_shift(f):
     global flag
     flag = f
 
+# Function used to direct the robot towards Goal
 def angle_towards_goal(goal_pos):
     global theta, flag, current_position
     desired_angle = math.atan2(goal_pos.y - current_position.y, goal_pos.x - current_position.x)
@@ -92,6 +101,7 @@ def angle_towards_goal(goal_pos):
     if math.fabs(difference_angle) <= 0.05:
         flag_shift(1)
 
+# Function used to move Robot towards Goal
 def move(goal_pos):
     global theta, flag, current_position
     desired_angle = math.atan2(goal_pos.y - current_position.y, goal_pos.x - current_position.x)
@@ -110,41 +120,49 @@ def move(goal_pos):
     if math.fabs(difference_angle) > 0.03:
         flag_shift(0)
 
+# Function used for WallFollow
 def obstacle_avoidance():
-    # print ("Chalo Chale Mitwa")
+    
     global regions
     reg_values = regions
     vel_msg = Twist()
-    # R = regions[0]
-    # FR = regions[1]
-    # F = regions[2]
-    # FL = regions[3]
-    # L = regions[4]
     
     if reg_values[2] > 1 and reg_values[3] < 1 and reg_values[1] < 1:
+        
         vel_msg.linear.x = 0.4
         vel_msg.angular.z = -0.3
     elif reg_values[2] < 1 and reg_values[3] < 1 and reg_values[1] < 1:
-        vel_msg.angular.z = 0.3
-    elif reg_values[2] < 1 and reg_values[3] < 1 and reg_values[1] > 1:
-        vel_msg.angular.z = 0.3
-    elif reg_values[2] < 1 and reg_values[3] > 1 and reg_values[1] < 1:
-        vel_msg.angular.z = 0.3
-    elif reg_values[2] > 1 and reg_values[3] > 1 and reg_values[1] > 1:
-        vel_msg.linear.x = 0.4
+        
+        
         vel_msg.angular.z = -0.3
-    elif reg_values[2] > 1 and reg_values[3] < 1 and reg_values[1] > 1:
+    elif reg_values[2] < 1 and reg_values[3] < 1 and reg_values[1] > 1:
+        
+        vel_msg.linear.x = 0.2
+        vel_msg.angular.z = -0.4
+    elif reg_values[2] < 1 and reg_values[3] > 1 and reg_values[1] < 1:
+        
+        vel_msg.linear.x = 0.2
+        vel_msg.angular.z = -0.4
+    elif reg_values[2] > 1 and reg_values[3] > 1 and reg_values[1] > 1:
+        
         vel_msg.linear.x = 0.4
-        vel_msg.angular.z = -0.3       
-    elif reg_values[2] < 1 and reg_values[3] > 1 and reg_values[1] > 1:
         vel_msg.angular.z = 0.3
+    elif reg_values[2] > 1 and reg_values[3] < 1 and reg_values[1] > 1:
+        
+        vel_msg.linear.x = 0.3
+        vel_msg.angular.z = -0.2       
+    elif reg_values[2] < 1 and reg_values[3] > 1 and reg_values[1] > 1:
+        
+        vel_msg.angular.z = -0.3
     elif reg_values[2] > 1 and reg_values[3] > 1 and reg_values[1] < 1:
-        vel_msg.linear.x = 0.5
+        
+        vel_msg.linear.x = 0.4
     
     
     vel_pub = rospy.Publisher("/cmd_vel",Twist,queue_size = 1) 
     vel_pub.publish(vel_msg)
 
+# Function used to specify destination alert
 def reached():
     vel_msg = Twist()
     vel_msg.linear.x = 0
@@ -152,6 +170,8 @@ def reached():
     vel_pub = rospy.Publisher("/cmd_vel",Twist,queue_size = 1) 
     vel_pub.publish(vel_msg)
 
+# function for calculating distance of the 
+# position of robot from the m-line
 def distance(position):
     global current_position, goal_position
     i = current_position
@@ -160,78 +180,34 @@ def distance(position):
     den = math.sqrt(pow(g.y - i.y, 2) + pow(g.x - i.x, 2))
  
     return num / den if den else 0
-
-# def move_right():
-#     vel_msg = Twist()
-
-#     vel_msg.angular.z = -0.3
-
-#     vel_pub = rospy.Publisher("/cmd_vel",Twist,queue_size = 1) 
-#     vel_pub.publish(vel_msg)
-
-# def move_straight():
-#     vel_msg = Twist()
-
-#     vel_msg.linear.z = 0.5
-
-#     vel_pub = rospy.Publisher("/cmd_vel",Twist,queue_size = 1) 
-#     vel_pub.publish(vel_msg)
-
-# def move_front_right():
-#     vel_msg =Twist()
-
-#     vel_msg.linear.x = 0.4
-#     vel_msg.angular.z = -0.3   
-
-#     vel_pub = rospy.Publisher("/cmd_vel",Twist,queue_size = 1) 
-#     vel_pub.publish(vel_msg)
-
-
-    # flag_1 =0
-    # if flag_1 == 0:
-    #     if flag == 0:
-    #         angle_towards_goal(goal_position)
-    #     elif flag == 1:
-    #         move(goal_position)
-    #         flag_1 == 1
-    #     elif flag == 2:
-    #         reached()
-    #     else:
-    #         print("Error")
-    # if flag_1 == 1:
-    #     if (dist > 0.3 or (reg_values[2] < 0.7 and reg_values[3] < 0.7 and reg_values[1] < 0.7)):
-    #         obstacle_avoidance()
-    #         flag_1 == 0
-    #     else:
-    #         flag_1 == 0
             
-
+# Main Function
 def main():
 
     global regions, current_position, goal_position
     
     rospy.init_node('bug_2')
     
+    # Subscriber for Laser Data
     laser_sub= rospy.Subscriber("/base_scan", LaserScan, laser_scan)
 
+    # Subscriber for Final Position
     rospy.Subscriber("/homing_signal", PoseStamped, goalCallback)
     
+    # Subscriber for Position of the robot
     rospy.Subscriber("/base_pose_ground_truth", Odometry, poseCallback)
 
     rate = rospy.Rate(10)
 
-
     while not rospy.is_shutdown():
-        # print(initial_position)
+        
         vel_msg =Twist()
         global regions
         reg_values = regions
         dist = distance(initial_position)
-        print(dist)
-        # print(dist)
-        rate.sleep()
 
-        if dist < 0.5 and not(reg_values[2] < 1 and reg_values[3] < 1):
+
+        if dist < 0.5 and ((reg_values[2] > 1 and reg_values[3] > 1 and reg_values[1] > 1)):
             if flag == 0:
                 angle_towards_goal(goal_position)
             elif flag == 1:
@@ -240,10 +216,10 @@ def main():
                 reached()
             else:
                 print("Error")
-        elif dist < 0.5 and (reg_values[2] < 1 or reg_values[3] < 1 or reg_values[1] < 1):
-            vel_msg 
+        
+        elif dist < 0.5 and (reg_values[3] < 1):
             flag_1 = 1
-            obstacle_avoidance()
+            obstacle_avoidance()           
 
         elif dist > 0.5:
             obstacle_avoidance()
@@ -261,8 +237,8 @@ def main():
         if goal_position.x == current_position.x and goal_position.y == current_position.y:
             reached()
 
+        rate.sleep()
 
-        # obstacle_avoidance()
 
     rospy.spin()
  
